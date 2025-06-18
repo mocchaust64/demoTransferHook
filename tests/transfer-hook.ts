@@ -1,6 +1,6 @@
 /**
  * Bài test này kiểm tra chức năng Transfer Hook Whitelist
- * Mục đích: Chỉ cho phép các tài khoản token có trong whitelist mới có thể nhận được token
+ * Mục đích: Chỉ cho phép các account token có trong whitelist mới có thể nhận được token
  */
 
 // Import các thư viện và module cần thiết
@@ -10,16 +10,16 @@ import {
   ASSOCIATED_TOKEN_PROGRAM_ID,  // ID của Associated Token Program
   ExtensionType,                // Enum cho các loại extension của token
   TOKEN_2022_PROGRAM_ID,        // ID của Token-2022 Program
-  createAssociatedTokenAccountInstruction,  // Tạo tài khoản token liên kết
+  createAssociatedTokenAccountInstruction,  // Tạo account token liên kết
   createInitializeMintInstruction,          // Khởi tạo mint token
   createInitializeTransferHookInstruction,   // Khởi tạo transfer hook cho mint
-  createMintToInstruction,                  // Mint token vào tài khoản
+  createMintToInstruction,                  // Mint token vào account
   createTransferCheckedWithTransferHookInstruction,  // Chuyển token với transfer hook
-  getAssociatedTokenAddressSync,  // Lấy địa chỉ tài khoản token liên kết
-  getMintLen,                     // Tính kích thước tài khoản mint
+  getAssociatedTokenAddressSync,  // Lấy địa chỉ account token liên kết
+  getMintLen,                     // Tính kích thước account mint
 } from '@solana/spl-token';
 import { Keypair, SystemProgram, Transaction, sendAndConfirmTransaction } from '@solana/web3.js';
-import type { TransferHook } from './target/types/transfer_hook';
+import type { TransferHook } from '../target/types/transfer_hook';
 
 describe('transfer-hook', () => {
   // Cấu hình client để sử dụng local cluster
@@ -37,17 +37,17 @@ describe('transfer-hook', () => {
   const mint = new Keypair();
   const decimals = 9;  // Số thập phân của token (10^9 = 1 token)
 
-  // Tạo địa chỉ tài khoản token nguồn (của người gửi)
-  // Associated Token Account là tiêu chuẩn tài khoản token được tạo từ địa chỉ ví và mint
+  // Tạo địa chỉ account token nguồn (của người gửi)
+  // Associated Token Account là tiêu chuẩn account token được tạo từ địa chỉ ví và mint
   const sourceTokenAccount = getAssociatedTokenAddressSync(
     mint.publicKey,        // Địa chỉ mint
-    wallet.publicKey,      // Chủ sở hữu tài khoản
+    wallet.publicKey,      // Chủ sở hữu account
     false,                 // allowOwnerOffCurve: false
     TOKEN_2022_PROGRAM_ID, // Sử dụng Token-2022 thay vì Token standard
     ASSOCIATED_TOKEN_PROGRAM_ID,
   );
 
-  // Tạo địa chỉ tài khoản token đích (người nhận)
+  // Tạo địa chỉ account token đích (người nhận)
   const recipient = Keypair.generate();  // Tạo ví mới cho người nhận
   const destinationTokenAccount = getAssociatedTokenAddressSync(
     mint.publicKey,
@@ -57,8 +57,8 @@ describe('transfer-hook', () => {
     ASSOCIATED_TOKEN_PROGRAM_ID,
   );
 
-  // Tạo địa chỉ tài khoản token cho người nhận không nằm trong whitelist
-  // Dùng để kiểm tra trường hợp chuyển token đến tài khoản không được phép
+  // Tạo địa chỉ account token cho người nhận không nằm trong whitelist
+  // Dùng để kiểm tra trường hợp chuyển token đến account không được phép
   const nonWhitelistedRecipient = Keypair.generate();
   const nonWhitelistedDestinationTokenAccount = getAssociatedTokenAddressSync(
     mint.publicKey,
@@ -69,32 +69,32 @@ describe('transfer-hook', () => {
   );
 
   // ======================================================================
-  // TEST CASE 1: Tạo tài khoản Mint với Transfer Hook Extension
+  // TEST CASE 1: Tạo account Mint với Transfer Hook Extension
   // ======================================================================
   /**
    * Các bước:
-   * 1. Tính kích thước cần thiết cho tài khoản mint với extension
-   * 2. Tạo tài khoản mới (createAccount)
+   * 1. Tính kích thước cần thiết cho account mint với extension
+   * 2. Tạo account mới (createAccount)
    * 3. Khởi tạo Transfer Hook extension cho mint (initializeTransferHook)
    * 4. Khởi tạo mint token (initializeMint)
    */
   it('Create Mint Account with Transfer Hook Extension', async () => {
     // Định nghĩa extensions cần thiết cho mint (chỉ TransferHook trong trường hợp này)
     const extensions = [ExtensionType.TransferHook];
-    // Tính kích thước cần thiết cho tài khoản mint
+    // Tính kích thước cần thiết cho account mint
     const mintLen = getMintLen(extensions);
-    // Tính số lamports cần thiết để tài khoản được miễn phí rent
+    // Tính số lamports cần thiết để account được miễn phí rent
     const lamports = await provider.connection.getMinimumBalanceForRentExemption(mintLen);
 
     // Tạo transaction với 3 instruction
     const transaction = new Transaction().add(
-      // 1. Tạo tài khoản mới để làm mint
+      // 1. Tạo account mới để làm mint
       SystemProgram.createAccount({
         fromPubkey: wallet.publicKey,         // Người trả phí
-        newAccountPubkey: mint.publicKey,     // Địa chỉ tài khoản mới
-        space: mintLen,                       // Kích thước tài khoản
+        newAccountPubkey: mint.publicKey,     // Địa chỉ account mới
+        space: mintLen,                       // Kích thước account
         lamports: lamports,                   // Số lamports cần thiết
-        programId: TOKEN_2022_PROGRAM_ID,     // Tài khoản thuộc Token-2022 Program
+        programId: TOKEN_2022_PROGRAM_ID,     // account thuộc Token-2022 Program
       }),
       // 2. Khởi tạo Transfer Hook extension cho mint
       createInitializeTransferHookInstruction(
@@ -119,14 +119,14 @@ describe('transfer-hook', () => {
   });
 
   // ======================================================================
-  // TEST CASE 2: Tạo các tài khoản Token và Mint Tokens
+  // TEST CASE 2: Tạo các account Token và Mint Tokens
   // ======================================================================
   /**
    * Các bước:
-   * 1. Tạo tài khoản token nguồn (sourceTokenAccount)
-   * 2. Tạo tài khoản token đích có trong whitelist (destinationTokenAccount)
-   * 3. Tạo tài khoản token đích không có trong whitelist (nonWhitelistedDestinationTokenAccount)
-   * 4. Mint 100 tokens vào tài khoản nguồn
+   * 1. Tạo account token nguồn (sourceTokenAccount)
+   * 2. Tạo account token đích có trong whitelist (destinationTokenAccount)
+   * 3. Tạo account token đích không có trong whitelist (nonWhitelistedDestinationTokenAccount)
+   * 4. Mint 100 tokens vào account nguồn
    */
   it('Create Token Accounts and Mint Tokens', async () => {
     // Số lượng token mint: 100 tokens (nhân với 10^decimals để lấy số đơn vị nhỏ nhất)
@@ -134,16 +134,16 @@ describe('transfer-hook', () => {
 
     // Tạo transaction với 4 instruction
     const transaction = new Transaction().add(
-      // 1. Tạo tài khoản token nguồn (cho người gửi/owner)
+      // 1. Tạo account token nguồn (cho người gửi/owner)
       createAssociatedTokenAccountInstruction(
         wallet.publicKey,               // Payer (người trả phí)
-        sourceTokenAccount,             // Địa chỉ tài khoản token
-        wallet.publicKey,               // Owner của tài khoản token
+        sourceTokenAccount,             // Địa chỉ account token
+        wallet.publicKey,               // Owner của account token
         mint.publicKey,                 // Mint token
         TOKEN_2022_PROGRAM_ID,          // Token-2022 Program ID
         ASSOCIATED_TOKEN_PROGRAM_ID,    // Associated Token Program ID
       ),
-      // 2. Tạo tài khoản token đích (cho người nhận hợp lệ)
+      // 2. Tạo account token đích (cho người nhận hợp lệ)
       createAssociatedTokenAccountInstruction(
         wallet.publicKey,
         destinationTokenAccount,
@@ -152,7 +152,7 @@ describe('transfer-hook', () => {
         TOKEN_2022_PROGRAM_ID,
         ASSOCIATED_TOKEN_PROGRAM_ID,
       ),
-      // 3. Tạo tài khoản token đích (cho người nhận không hợp lệ)
+      // 3. Tạo account token đích (cho người nhận không hợp lệ)
       createAssociatedTokenAccountInstruction(
         wallet.publicKey,
         nonWhitelistedDestinationTokenAccount,
@@ -161,10 +161,10 @@ describe('transfer-hook', () => {
         TOKEN_2022_PROGRAM_ID,
         ASSOCIATED_TOKEN_PROGRAM_ID,
       ),
-      // 4. Mint 100 tokens vào tài khoản nguồn
+      // 4. Mint 100 tokens vào account nguồn
       createMintToInstruction(
         mint.publicKey,         // Mint address
-        sourceTokenAccount,     // Tài khoản nhận token
+        sourceTokenAccount,     // account nhận token
         wallet.publicKey,       // Mint authority
         amount,                 // Số lượng token mint
         [],                     // Signers (trống vì wallet.publicKey là mint authority)
@@ -180,20 +180,20 @@ describe('transfer-hook', () => {
   });
 
   // ======================================================================
-  // TEST CASE 3: Tạo tài khoản ExtraAccountMetaList
+  // TEST CASE 3: Tạo account ExtraAccountMetaList
   // ======================================================================
   /**
    * Đây là bước quan trọng cho Transfer Hook. ExtraAccountMetaList lưu trữ
-   * danh sách các tài khoản bổ sung cần thiết khi thực hiện transfer hook.
-   * Trong trường hợp này, nó chứa thông tin về tài khoản whitelist.
+   * danh sách các account bổ sung cần thiết khi thực hiện transfer hook.
+   * Trong trường hợp này, nó chứa thông tin về account whitelist.
    */
   it('Create ExtraAccountMetaList Account', async () => {
     // Tạo instruction gọi hàm initializeExtraAccountMetaList từ program
     const initializeExtraAccountMetaListInstruction = await program.methods
       .initializeExtraAccountMetaList()   // Gọi hàm initializeExtraAccountMetaList trong contract
       .accounts({
-        mint: mint.publicKey,             // Truyền tài khoản mint
-        // Các tài khoản khác như payer, extra_account_meta_list, system_program
+        mint: mint.publicKey,             // Truyền account mint
+        // Các account khác như payer, extra_account_meta_list, system_program
         // được tự động thêm vào nhờ Anchor context
       })
       .instruction();
@@ -210,18 +210,18 @@ describe('transfer-hook', () => {
   });
 
   // ======================================================================
-  // TEST CASE 4: Thêm tài khoản vào whitelist
+  // TEST CASE 4: Thêm account vào whitelist
   // ======================================================================
   /**
    * Thêm destinationTokenAccount vào whitelist để cho phép
-   * chuyển token đến tài khoản này.
+   * chuyển token đến account này.
    */
   it('Add account to white list', async () => {
     // Tạo instruction gọi hàm addToWhitelist từ program
     const addAccountToWhiteListInstruction = await program.methods
       .addToWhitelist()         // Gọi hàm addToWhitelist trong contract
       .accounts({
-        newAccount: destinationTokenAccount,  // Tài khoản cần thêm vào whitelist
+        newAccount: destinationTokenAccount,  // account cần thêm vào whitelist
         signer: wallet.publicKey,             // Người ký (phải là authority của whitelist)
         // white_list được tự động thêm vào từ Anchor context
       })
@@ -235,12 +235,12 @@ describe('transfer-hook', () => {
   });
 
   // ======================================================================
-  // TEST CASE 5: Chuyển token đến tài khoản có trong whitelist
+  // TEST CASE 5: Chuyển token đến account có trong whitelist
   // ======================================================================
   /**
-   * Bước này kiểm tra việc chuyển token đến tài khoản đã được thêm vào whitelist.
+   * Bước này kiểm tra việc chuyển token đến account đã được thêm vào whitelist.
    * Vì destinationTokenAccount đã được thêm vào whitelist, nên chuyển token đến
-   * tài khoản này sẽ thành công.
+   * account này sẽ thành công.
    */
   it('Transfer Hook with Extra Account Meta - To Whitelisted Account (Should Succeed)', async () => {
     // Số lượng token chuyển: 1 token
@@ -248,13 +248,13 @@ describe('transfer-hook', () => {
     const bigIntAmount = BigInt(amount);  // Chuyển sang BigInt vì API mới yêu cầu
 
     // Tạo transfer instruction với transfer hook
-    // Hàm này sẽ tự động thêm các tài khoản bổ sung cần thiết từ ExtraAccountMetaList
+    // Hàm này sẽ tự động thêm các account bổ sung cần thiết từ ExtraAccountMetaList
     const transferInstruction = await createTransferCheckedWithTransferHookInstruction(
       connection,                 // Kết nối đến Solana cluster
-      sourceTokenAccount,         // Tài khoản nguồn
+      sourceTokenAccount,         // account nguồn
       mint.publicKey,             // Mint token
-      destinationTokenAccount,    // Tài khoản đích (đã có trong whitelist)
-      wallet.publicKey,           // Authority của tài khoản nguồn
+      destinationTokenAccount,    // account đích (đã có trong whitelist)
+      wallet.publicKey,           // Authority của account nguồn
       bigIntAmount,               // Số lượng token chuyển
       decimals,                   // Số thập phân của token
       [],                         // Signers bổ sung (không cần)
@@ -270,18 +270,18 @@ describe('transfer-hook', () => {
   });
 
   // ======================================================================
-  // TEST CASE 6: Xóa tài khoản khỏi whitelist
+  // TEST CASE 6: Xóa account khỏi whitelist
   // ======================================================================
   /**
    * Xóa destinationTokenAccount khỏi whitelist để chuẩn bị cho
-   * test case tiếp theo (chuyển token đến tài khoản đã bị xóa khỏi whitelist).
+   * test case tiếp theo (chuyển token đến account đã bị xóa khỏi whitelist).
    */
   it('Remove account from white list', async () => {
     // Tạo instruction gọi hàm removeFromWhitelist từ program
     const removeFromWhiteListInstruction = await program.methods
       .removeFromWhitelist()     // Gọi hàm removeFromWhitelist trong contract
       .accounts({
-        accountToRemove: destinationTokenAccount,  // Tài khoản cần xóa
+        accountToRemove: destinationTokenAccount,  // account cần xóa
         signer: wallet.publicKey,                 // Người ký (phải là authority)
         // white_list được tự động thêm vào từ Anchor context
       })
@@ -295,12 +295,12 @@ describe('transfer-hook', () => {
   });
 
   // ======================================================================
-  // TEST CASE 7: Chuyển token đến tài khoản đã bị xóa khỏi whitelist
+  // TEST CASE 7: Chuyển token đến account đã bị xóa khỏi whitelist
   // ======================================================================
   /**
-   * Bước này kiểm tra việc chuyển token đến tài khoản đã bị xóa khỏi whitelist.
+   * Bước này kiểm tra việc chuyển token đến account đã bị xóa khỏi whitelist.
    * Vì destinationTokenAccount đã bị xóa khỏi whitelist, nên chuyển token đến
-   * tài khoản này sẽ thất bại.
+   * account này sẽ thất bại.
    */
   it('Transfer Hook with Extra Account Meta - To Removed Account (Should Fail)', async () => {
     // Số lượng token chuyển: 1 token
@@ -312,7 +312,7 @@ describe('transfer-hook', () => {
       connection,
       sourceTokenAccount,
       mint.publicKey,
-      destinationTokenAccount,    // Tài khoản đã bị xóa khỏi whitelist
+      destinationTokenAccount,    // account đã bị xóa khỏi whitelist
       wallet.publicKey,
       bigIntAmount,
       decimals,
@@ -336,12 +336,12 @@ describe('transfer-hook', () => {
   });
 
   // ======================================================================
-  // TEST CASE 8: Chuyển token đến tài khoản không có trong whitelist
+  // TEST CASE 8: Chuyển token đến account không có trong whitelist
   // ======================================================================
   /**
-   * Bước này kiểm tra việc chuyển token đến tài khoản chưa bao giờ được thêm vào whitelist.
+   * Bước này kiểm tra việc chuyển token đến account chưa bao giờ được thêm vào whitelist.
    * Vì nonWhitelistedDestinationTokenAccount không có trong whitelist, nên chuyển token
-   * đến tài khoản này sẽ thất bại.
+   * đến account này sẽ thất bại.
    */
   it('Transfer Hook with Extra Account Meta - To Non-Whitelisted Account (Should Fail)', async () => {
     // Số lượng token chuyển: 1 token
@@ -353,7 +353,7 @@ describe('transfer-hook', () => {
       connection,
       sourceTokenAccount,
       mint.publicKey,
-      nonWhitelistedDestinationTokenAccount,  // Tài khoản không có trong whitelist
+      nonWhitelistedDestinationTokenAccount,  // account không có trong whitelist
       wallet.publicKey,
       bigIntAmount,
       decimals,

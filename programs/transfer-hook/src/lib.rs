@@ -20,23 +20,23 @@ use anchor_spl::{
         extension::{
             // TransferHookAccount: Extension chứa thông tin về trạng thái chuyển token
             transfer_hook::TransferHookAccount,
-            // Các trait để làm việc với trạng thái và extension của tài khoản
+            // Các trait để làm việc với trạng thái và extension của account
             BaseStateWithExtensionsMut,
             PodStateWithExtensionsMut,
         },
-        // PodAccount: Cấu trúc "Plain Old Data" để lưu trữ dữ liệu tài khoản token
+        // PodAccount: Cấu trúc "Plain Old Data" để lưu trữ dữ liệu account token
         pod::PodAccount,
     },
     // Interface cho Mint và TokenAccount, hoạt động với cả token tiêu chuẩn và token-2022
     token_interface::{ Mint, TokenAccount },
 };
-// Thư viện để xử lý các tài khoản bổ sung cần thiết cho transfer hook
+// Thư viện để xử lý các account bổ sung cần thiết cho transfer hook
 use spl_tlv_account_resolution::{
-    // ExtraAccountMeta: Định nghĩa các tài khoản bổ sung cần được cung cấp
+    // ExtraAccountMeta: Định nghĩa các account bổ sung cần được cung cấp
     account::ExtraAccountMeta,
     // Seed: Được sử dụng để tạo và tìm các PDA (Program Derived Address)
     seeds::Seed,
-    // ExtraAccountMetaList: Quản lý danh sách các tài khoản bổ sung
+    // ExtraAccountMetaList: Quản lý danh sách các account bổ sung
     state::ExtraAccountMetaList,
 };
 // Import các định nghĩa từ Transfer Hook Interface
@@ -61,7 +61,7 @@ pub enum TransferError {
 
 // PHẦN 3: CẤU TRÚC DỮ LIỆU CƠ BẢN
 /*
- * Định nghĩa cấu trúc dữ liệu của tài khoản whitelist
+ * Định nghĩa cấu trúc dữ liệu của account whitelist
  */
 #[account]
 pub struct WhiteList {
@@ -69,74 +69,74 @@ pub struct WhiteList {
     pub authority: Pubkey,
     // Danh sách các địa chỉ được phép (whitelist)
     // Lưu ý: Vector này có kích thước động và giới hạn bởi kích thước
-    // của tài khoản (400 bytes đã được cấp phát)
+    // của account (400 bytes đã được cấp phát)
     // Mỗi Pubkey chiếm 32 bytes, nên whitelist có thể chứa tối đa khoảng 10-12 địa chỉ
     // tùy thuộc vào các metadata khác
     pub white_list: Vec<Pubkey>,
 }
 
-// PHẦN 4: CÁC CẤU TRÚC TÀI KHOẢN VÀ LOGIC LIÊN QUAN
+// PHẦN 4: CÁC CẤU TRÚC account VÀ LOGIC LIÊN QUAN
 /*
- * Định nghĩa cấu trúc tài khoản cho hàm khởi tạo ExtraAccountMetaList
+ * Định nghĩa cấu trúc account cho hàm khởi tạo ExtraAccountMetaList
  *
- * Mô tả các tài khoản cần thiết và cách chúng được xác thực
+ * Mô tả các account cần thiết và cách chúng được xác thực
  * khi gọi hàm initialize_extra_account_meta_list
  */
 #[derive(Accounts)]
 pub struct InitializeExtraAccountMetaList<'info> {
-    // Người trả phí cho việc tạo tài khoản
-    // mut: Tài khoản này có thể bị trừ lamports
+    // Người trả phí cho việc tạo account
+    // mut: account này có thể bị trừ lamports
     #[account(mut)]
     payer: Signer<'info>,
 
     /// CHECK: ExtraAccountMetaList Account, must use these seeds
-    // Tài khoản PDA lưu trữ thông tin về các tài khoản bổ sung
+    // account PDA lưu trữ thông tin về các account bổ sung
     // Được tạo từ seeds bao gồm "extra-account-metas" và địa chỉ của mint
-    // Đây là tài khoản quan trọng cho Transfer Hook, Token-2022 sẽ sử dụng nó
-    // để biết cần truy xuất tài khoản bổ sung nào khi chuyển token
+    // Đây là account quan trọng cho Transfer Hook, Token-2022 sẽ sử dụng nó
+    // để biết cần truy xuất account bổ sung nào khi chuyển token
     #[account(
-        init,  // Khởi tạo tài khoản mới
+        init,  // Khởi tạo account mới
         seeds = [b"extra-account-metas", mint.key().as_ref()],  // Seeds để tạo PDA
         bump,  // Bump seed sẽ được tự động tính toán
-        space = ExtraAccountMetaList::size_of(  // Kích thước của tài khoản
+        space = ExtraAccountMetaList::size_of(  // Kích thước của account
             InitializeExtraAccountMetaList::extra_account_metas()?.len()
         )?,
-        payer = payer  // Người trả phí cho việc tạo tài khoản
+        payer = payer  // Người trả phí cho việc tạo account
     )]
     pub extra_account_meta_list: AccountInfo<'info>,
-    // Tài khoản mint của token
+    // account mint của token
     pub mint: InterfaceAccount<'info, Mint>,
-    // System Program, cần thiết để tạo tài khoản
+    // System Program, cần thiết để tạo account
     pub system_program: Program<'info, System>,
-    // Tài khoản lưu trữ whitelist
+    // account lưu trữ whitelist
     // Được tạo từ seed "white_list"
     // init_if_needed: Tạo mới nếu chưa tồn tại
-    // space = 400: Cấp phát 400 bytes cho tài khoản
+    // space = 400: Cấp phát 400 bytes cho account
     // Lưu ý: Kích thước cố định này giới hạn số lượng địa chỉ có thể thêm vào whitelist
     #[account(init_if_needed, seeds = [b"white_list"], bump, payer = payer, space = 400)]
     pub white_list: Account<'info, WhiteList>,
 }
 
 /*
- * Định nghĩa các tài khoản bổ sung cần thiết cho Transfer Hook
+ * Định nghĩa các account bổ sung cần thiết cho Transfer Hook
  * 
- * Mô tả các tài khoản bổ sung cần được cung cấp tự động
+ * Mô tả các account bổ sung cần được cung cấp tự động
  * khi Token-2022 gọi transfer hook
  */
 impl<'info> InitializeExtraAccountMetaList<'info> {
     pub fn extra_account_metas() -> Result<Vec<ExtraAccountMeta>> {
         Ok(
             vec![
-                // Chỉ có một tài khoản bổ sung là white_list
+                // Chỉ có một account bổ sung là white_list
                 ExtraAccountMeta::new_with_seeds(
                     &[
-                        // Seed để tạo PDA cho tài khoản white_list
+                        // Seed để tạo PDA cho account white_list
                         Seed::Literal {
                             bytes: "white_list".as_bytes().to_vec(),
                         },
                     ],
-                    false, // is_signer: false - không yêu cầu tài khoản này là signer
-                    true // is_writable: true - tài khoản này cần có quyền ghi
+                    false, // is_signer: false - không yêu cầu account này là signer
+                    true // is_writable: true - account này cần có quyền ghi
                 )?
             ]
         )
@@ -144,50 +144,50 @@ impl<'info> InitializeExtraAccountMetaList<'info> {
 }
 
 /*
- * Định nghĩa cấu trúc tài khoản cho hàm Transfer Hook
+ * Định nghĩa cấu trúc account cho hàm Transfer Hook
  * 
- * QUAN TRỌNG: Thứ tự 4 tài khoản đầu tiên PHẢI theo đúng thứ tự:
+ * QUAN TRỌNG: Thứ tự 4 account đầu tiên PHẢI theo đúng thứ tự:
  * source_token, mint, destination_token, owner
  * Đây là yêu cầu của Transfer Hook Interface
  */
 #[derive(Accounts)]
 pub struct TransferHook<'info> {
-    // Tài khoản token nguồn
+    // account token nguồn
     // Phải thỏa mãn: token::mint = mint, token::authority = owner
     #[account(token::mint = mint, token::authority = owner)]
     pub source_token: InterfaceAccount<'info, TokenAccount>,
-    // Tài khoản mint của token
+    // account mint của token
     pub mint: InterfaceAccount<'info, Mint>,
-    // Tài khoản token đích
+    // account token đích
     // Phải thỏa mãn: token::mint = mint
     #[account(token::mint = mint)]
     pub destination_token: InterfaceAccount<'info, TokenAccount>,
     /// CHECK: source token account owner, can be SystemAccount or PDA owned by another program
-    // Chủ sở hữu của tài khoản nguồn
+    // Chủ sở hữu của account nguồn
     pub owner: UncheckedAccount<'info>,
     /// CHECK: ExtraAccountMetaList Account,
-    // Tài khoản lưu trữ thông tin về các tài khoản bổ sung
+    // account lưu trữ thông tin về các account bổ sung
     // Được xác định bằng PDA từ seed "extra-account-metas" và địa chỉ mint
     #[account(seeds = [b"extra-account-metas", mint.key().as_ref()], bump)]
     pub extra_account_meta_list: UncheckedAccount<'info>,
-    // Tài khoản lưu trữ whitelist
+    // account lưu trữ whitelist
     // Được xác định bằng PDA từ seed "white_list"
     #[account(seeds = [b"white_list"], bump)]
     pub white_list: Account<'info, WhiteList>,
 }
 
 /*
- * Định nghĩa cấu trúc tài khoản cho hàm thêm vào whitelist
+ * Định nghĩa cấu trúc account cho hàm thêm vào whitelist
  */
 #[derive(Accounts)]
 pub struct AddToWhiteList<'info> {
     /// CHECK: New account to add to white list
     // Địa chỉ mới cần thêm vào whitelist
-    // Không cần kiểm tra gì về tài khoản này
+    // Không cần kiểm tra gì về account này
     #[account()]
     pub new_account: AccountInfo<'info>,
-    // Tài khoản whitelist, cần có quyền ghi để cập nhật
-    // mut: Tài khoản này sẽ bị chỉnh sửa (thêm địa chỉ mới)
+    // account whitelist, cần có quyền ghi để cập nhật
+    // mut: account này sẽ bị chỉnh sửa (thêm địa chỉ mới)
     #[account(
         mut,
         seeds = [b"white_list"],
@@ -195,23 +195,23 @@ pub struct AddToWhiteList<'info> {
     )]
     pub white_list: Account<'info, WhiteList>,
     // Người ký giao dịch, phải là authority của whitelist
-    // mut: Tài khoản này sẽ trả phí giao dịch
+    // mut: account này sẽ trả phí giao dịch
     #[account(mut)]
     pub signer: Signer<'info>,
 }
 
 /*
- * Định nghĩa cấu trúc tài khoản cho hàm xóa khỏi whitelist
+ * Định nghĩa cấu trúc account cho hàm xóa khỏi whitelist
  */
 #[derive(Accounts)]
 pub struct RemoveFromWhiteList<'info> {
     /// CHECK: Account to remove from white list
     // Địa chỉ cần xóa khỏi whitelist
-    // Không cần kiểm tra gì về tài khoản này
+    // Không cần kiểm tra gì về account này
     #[account()]
     pub account_to_remove: AccountInfo<'info>,
-    // Tài khoản whitelist, cần có quyền ghi để cập nhật
-    // mut: Tài khoản này sẽ bị chỉnh sửa (xóa địa chỉ)
+    // account whitelist, cần có quyền ghi để cập nhật
+    // mut: account này sẽ bị chỉnh sửa (xóa địa chỉ)
     #[account(
         mut,
         seeds = [b"white_list"],
@@ -219,7 +219,7 @@ pub struct RemoveFromWhiteList<'info> {
     )]
     pub white_list: Account<'info, WhiteList>,
     // Người ký giao dịch, phải là authority của whitelist
-    // mut: Tài khoản này sẽ trả phí giao dịch
+    // mut: account này sẽ trả phí giao dịch
     #[account(mut)]
     pub signer: Signer<'info>,
 }
@@ -234,8 +234,8 @@ pub mod transfer_hook {
      * Hàm khởi tạo ExtraAccountMetaList
      * 
      * Đây là hàm bắt buộc phải triển khai theo Transfer Hook Interface
-     * Mục đích: Tạo và khởi tạo tài khoản ExtraAccountMetaList chứa thông tin
-     * về các tài khoản bổ sung cần được cung cấp khi thực hiện chuyển token
+     * Mục đích: Tạo và khởi tạo account ExtraAccountMetaList chứa thông tin
+     * về các account bổ sung cần được cung cấp khi thực hiện chuyển token
      * 
      * QUAN TRỌNG: Hàm này phải được gọi trước khi có thể sử dụng transfer hook
      */
@@ -247,12 +247,12 @@ pub mod transfer_hook {
         // Điều này xác định ai có quyền thêm/xóa địa chỉ trong whitelist
         ctx.accounts.white_list.authority = ctx.accounts.payer.key();
 
-        // Lấy danh sách các tài khoản bổ sung cần thiết cho transfer hook
-        // Trong trường hợp này, chỉ có một tài khoản bổ sung là white_list
+        // Lấy danh sách các account bổ sung cần thiết cho transfer hook
+        // Trong trường hợp này, chỉ có một account bổ sung là white_list
         let extra_account_metas = InitializeExtraAccountMetaList::extra_account_metas()?;
 
-        // Khởi tạo tài khoản ExtraAccountMetaList với danh sách các tài khoản bổ sung
-        // Token-2022 sẽ sử dụng tài khoản này để biết cần truy xuất tài khoản bổ sung nào
+        // Khởi tạo account ExtraAccountMetaList với danh sách các account bổ sung
+        // Token-2022 sẽ sử dụng account này để biết cần truy xuất account bổ sung nào
         // khi thực hiện chuyển token
         ExtraAccountMetaList::init::<ExecuteInstruction>(
             &mut ctx.accounts.extra_account_meta_list.try_borrow_mut_data()?,
@@ -282,7 +282,7 @@ pub mod transfer_hook {
             panic!("Account not in white list!");
         }
 
-        // Log thông báo thành công nếu tài khoản đích nằm trong whitelist
+        // Log thông báo thành công nếu account đích nằm trong whitelist
         msg!("Account in white list, all good!");
 
         Ok(())
@@ -364,15 +364,15 @@ pub mod transfer_hook {
  * Đây là một biện pháp bảo mật quan trọng
  */
 fn check_is_transferring(ctx: &Context<TransferHook>) -> Result<()> {
-    // Lấy thông tin tài khoản token nguồn
+    // Lấy thông tin account token nguồn
     let source_token_info = ctx.accounts.source_token.to_account_info();
-    // Mượn dữ liệu của tài khoản để đọc và chỉnh sửa
+    // Mượn dữ liệu của account để đọc và chỉnh sửa
     let mut account_data_ref: RefMut<&mut [u8]> = source_token_info.try_borrow_mut_data()?;
-    // Giải mã dữ liệu tài khoản thành cấu trúc PodAccount
-    // PodStateWithExtensionsMut cho phép truy cập vào dữ liệu của tài khoản
+    // Giải mã dữ liệu account thành cấu trúc PodAccount
+    // PodStateWithExtensionsMut cho phép truy cập vào dữ liệu của account
     // và các extension của nó
     let mut account = PodStateWithExtensionsMut::<PodAccount>::unpack(*account_data_ref)?;
-    // Lấy extension TransferHookAccount từ tài khoản
+    // Lấy extension TransferHookAccount từ account
     // TransferHookAccount chứa trạng thái của quá trình chuyển token
     let account_extension = account.get_extension_mut::<TransferHookAccount>()?;
 
